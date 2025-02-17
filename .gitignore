@@ -1,3 +1,8 @@
+# Experimental data and code files
+anim/
+saved/
+data/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

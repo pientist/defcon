@@ -1,0 +1,11 @@
+fastparquet
+matplotlib
+numpy
+pandas
+pyarrow
+scipy
+scikit-learn
+seaborn
+shapely
+statsmodels
+tqdm
