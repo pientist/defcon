@@ -67,8 +67,16 @@ python main.py --result_path data/player_scores.parquet
 The resulting Parquet file will be saved at the designated path.
 
 ### 5. Match Analysis with Visualization
-By following cells in `test.ipynb`, you can visualize a specific moment of the match with estimated component values for post-match analysis. Also, you can plot the players' defensive scores of the match as the following example:
+By running cells in `tutorial.ipynb`, you can visualize a specific moment of the match with estimated component values for post-match analysis. As a result, the following example figure on the left side displays the **team credits** corresponding to passing options (including passes to red #4 and $5) in a given situation, where the color of each attacking player indicates the **success probability** of the pass targeted to the player. Meanwhile, the figure on the right side shows the **player credits** assigned to individual defenders for preventing a pass to red #5 from happening. Here, the color of each defender signifies the **interception probability** (i.e., the **failure posterior**) of him if the pass to red #5 failed.
+<p align="center">
+  <img src="img/team_credits.png" width="48%" />
+  <img src="img/player_credits.png" width="48%" />
+</p>
 
-![score_plot](img/score_plot.png)<br>
+Also, you can plot the players' defensive scores of the match as the following example:
+
+<p align="center">
+  <img src="img/score_plot.png" width="80%" />
+</p>
 
 
