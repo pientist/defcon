@@ -1,3 +1,4 @@
+import argparse
 import os
 import sys
 from datetime import datetime
@@ -7,15 +8,19 @@ if not os.getcwd() in sys.path:
 
 import numpy as np
 import pandas as pd
+import torch
 from tqdm import tqdm
 
 from datatools.defcon import DEFCON
 from datatools.feature import FeatureEngineer
 from datatools.xg_model import XGModel
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--result_path", type=str, required=False, default="data/ajax/player_scores.parquet")
+args, _ = parser.parse_known_args()
+
 if __name__ == "__main__":
-    device = "cuda:3"
-    result_path = "data/ajax/player_scores.parquet"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     event_files = np.sort(os.listdir("data/ajax/event_synced"))
     game_ids = np.sort([f.split(".")[0] for f in event_files if f.endswith(".csv")])
@@ -62,9 +67,9 @@ if __name__ == "__main__":
         )
         defcon.evaluate(mask_likelihood=0.03)
 
-        if not os.path.exists(result_path):
-            defcon.player_scores.to_parquet(result_path, engine="pyarrow", index=False)
+        if not os.path.exists(args.result_path):
+            defcon.player_scores.to_parquet(args.result_path, engine="pyarrow", index=False)
         else:
-            saved_scores = pd.read_parquet(result_path, engine="pyarrow")
+            saved_scores = pd.read_parquet(args.result_path, engine="pyarrow")
             saved_scores = pd.concat([saved_scores, defcon.player_scores], ignore_index=True)
-            saved_scores.to_parquet(result_path, engine="pyarrow", index=False)
+            saved_scores.to_parquet(args.result_path, engine="pyarrow", index=False)

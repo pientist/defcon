@@ -1,3 +1,4 @@
+import argparse
 import os
 import re
 import sys
@@ -711,17 +712,21 @@ class FeatureEngineer:
             torch.save(self.augmented_labels, f"{label_dir}/{game_id}.pt")
 
 
-if __name__ == "__main__":
-    action_type = "all"
-    include_goals = action_type == "pass_shot" or action_type == "failure"
-    augment = action_type == "failure"
+parser = argparse.ArgumentParser()
+parser.add_argument("--action_type", type=str, required=True, choices=["all", "pass", "shot", "failure"])
+args, _ = parser.parse_known_args()
 
-    feature_dir = f"data/ajax/pyg/{action_type}_features"
-    label_dir = f"data/ajax/pyg/{action_type}_labels"
+
+if __name__ == "__main__":
+    include_goals = args.action_type in ["all", "failure"]
+    augment = args.action_type == "failure"
+
+    feature_dir = f"data/ajax/pyg/{args.action_type}_features"
+    label_dir = f"data/ajax/pyg/{args.action_type}_labels"
 
     if augment:
-        augmented_feature_dir = f"data/ajax/pyg/{action_type}_aug_features"
-        augmented_label_dir = f"data/ajax/pyg/{action_type}_aug_labels"
+        augmented_feature_dir = f"data/ajax/pyg/{args.action_type}_aug_features"
+        augmented_label_dir = f"data/ajax/pyg/{args.action_type}_aug_labels"
 
     event_files = np.sort(os.listdir("data/ajax/event_synced"))
     game_ids = np.sort([f.split(".")[0] for f in event_files if f.endswith(".csv")])
@@ -737,7 +742,7 @@ if __name__ == "__main__":
         events = pd.read_csv(f"data/ajax/event_synced/{game_id}.csv", header=0, parse_dates=["utc_timestamp"])
         traces = pd.read_parquet(f"data/ajax/tracking_processed/{game_id}.parquet")
 
-        eng = FeatureEngineer(events, traces, game_lineup, xg_model, action_type, include_goals=include_goals)
+        eng = FeatureEngineer(events, traces, game_lineup, xg_model, args.action_type, include_goals=include_goals)
         eng.labels = eng.generate_label_tensors()
         eng.features = eng.generate_feature_graphs()
 
