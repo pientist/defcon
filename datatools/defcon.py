@@ -19,7 +19,7 @@ from datatools.utils import sparsify_edges
 from inference import (
     find_active_players,
     inference,
-    inference_intercept,
+    inference_posterior,
     inference_success,
 )
 from models.utils import load_model
@@ -34,7 +34,7 @@ class DEFCON:
         pass_success_model_id="intent_success/01",
         pass_scoring_model_id="intent_scoring/01",
         shot_blocking_model_id="shot_blocking/01",
-        intercept_model_id="failure_receiver/01",
+        posterior_model_id="failure_receiver/01",
         likelihood_model_id="oppo_agn_intent/01",
         device="cuda",
     ):
@@ -46,7 +46,7 @@ class DEFCON:
         self.pass_success_model = load_model(pass_success_model_id, device)
         self.pass_scoring_model = load_model(pass_scoring_model_id, device)
         self.shot_blocking_model = load_model(shot_blocking_model_id, device)
-        self.intercept_model = load_model(intercept_model_id, device)
+        self.posterior_model = load_model(posterior_model_id, device)
         self.likelihood_model = load_model(likelihood_model_id, device)
 
         self.shot_eng = None  # To generate features for shot_blocking_model
@@ -56,7 +56,7 @@ class DEFCON:
         self.success_probs = None
         self.goal_if_success = None
         self.goal_if_failure = None
-        self.intercept_probs = None
+        self.posteriors = None
         self.receive_probs = None
         self.likelihoods = None
 
@@ -94,7 +94,7 @@ class DEFCON:
         self.intent_probs = inference(self.eng, self.pass_intent_model, self.device)[0]
         self.success_probs = inference_success(self.eng, self.pass_success_model, self.device)
         self.goal_if_success, self.goal_if_failure = inference(self.eng, self.pass_scoring_model, self.device)
-        self.intercept_probs = inference_intercept(self.eng, self.intercept_model, self.device)
+        self.posteriors = inference_posterior(self.eng, self.posterior_model, self.device)
 
         self.likelihoods = inference(self.eng, self.likelihood_model, self.device)[0]
         self.likelihoods["home_goal"] = np.where(self.likelihoods["home_goal"].notna(), 1, np.nan)
@@ -196,7 +196,7 @@ class DEFCON:
                 self.team_credits.at[i, intent] = -self.xreturns.at[i, "diff"]
 
     def compute_player_credits(self):
-        # Reshape team_credits to have the same indices with intercept_probs
+        # Reshape team_credits to have the same indices with posteriors
         cols_to_drop = ["player_id", "intent_id", "receiver_id", "outcome"]
         reshaped_team_credits = []
 
@@ -243,14 +243,14 @@ class DEFCON:
         team_credits = pd.concat(reshaped_team_credits, ignore_index=True)
 
         # Initialize player credits
-        intercept_probs = self.intercept_probs.reset_index().copy()
-        players = [c for c in intercept_probs.columns if c[:4] in ["home", "away"]]
-        self.player_credits = intercept_probs[players].astype(float) * 0
+        posteriors = self.posteriors.reset_index().copy()
+        players = [c for c in posteriors.columns if c[:4] in ["home", "away"]]
+        self.player_credits = posteriors[players].astype(float) * 0
 
         # Credits for conceding/preventing passes
         pass_indices = team_credits["interceptor"].isna() & (team_credits["team_credit"] != 0)
         pass_credits = team_credits.loc[pass_indices, ["team_credit"]].values.astype(float)
-        self.player_credits.loc[pass_indices] = intercept_probs.loc[pass_indices, players] * pass_credits
+        self.player_credits.loc[pass_indices] = posteriors.loc[pass_indices, players] * pass_credits
 
         # Credits for interceptions and tackles
         intercept_credits = team_credits[team_credits["interceptor"].notna()]
@@ -258,8 +258,8 @@ class DEFCON:
             interceptor = team_credits.at[i, "interceptor"]
             self.player_credits.at[i, interceptor] = team_credits.at[i, "team_credit"]
 
-        self.player_credits["index"] = self.intercept_probs["index"].values
-        self.player_credits["option"] = self.intercept_probs.index
+        self.player_credits["index"] = self.posteriors["index"].values
+        self.player_credits["option"] = self.posteriors.index
         self.player_credits["defense_type"] = team_credits["defense_type"]
         self.player_credits = self.player_credits[["index", "option", "defense_type"] + players]
 
@@ -280,7 +280,7 @@ class DEFCON:
 
         return seconds
 
-    def evaluate(self, mask_likelihood=0.01):
+    def evaluate(self, mask_likelihood=0.03):
         if self.success_probs is None:
             self.estimate_components()
 
@@ -333,11 +333,6 @@ class DEFCON:
         values["goal_if_failure"] = self.goal_if_failure.loc[action_index, players[0]].dropna().astype(float)
         values["oppo_agn_intent"] = self.likelihoods.loc[action_index, players[0]].dropna().astype(float)
 
-        random_values = np.random.uniform(0.1, 0.2, size=12)
-        random_values[3] = 0
-        random_values[4] = 0
-        values["pass_success"] -= random_values
-
         if "advantage" in [size, color, annot] or "team_credit" in [size, color, annot]:
             values["advantage"] = self.advantages.loc[action_index, players[0]].dropna().astype(float)
             values["team_credit"] = self.team_credits.loc[action_index, players[0]].dropna().astype(float)
@@ -366,12 +361,12 @@ class DEFCON:
             highlights = dict() if hypo_intent.endswith("_goal") else {"black": [hypo_intent]}
             arrows = [(intent, hypo_intent)] if action_type == "tackle" else [(possessor, hypo_intent)]
 
-        if "intercept" in [size, color, annot] or "player_credit" in [size, color, annot]:
+        if "posterior" in [size, color, annot] or "player_credit" in [size, color, annot]:
             assert hypo_intent is not None
             opponents = [p for p in players[1] if not p.endswith("_goal")]
-            if "intercept" in [size, color, annot]:
-                intercept_probs_i = self.intercept_probs[self.intercept_probs["index"] == action_index]
-                intercept_probs_i = intercept_probs_i.loc[hypo_intent, opponents].dropna().astype(float)
+            if "posterior" in [size, color, annot]:
+                posteriors_i = self.posteriors[self.posteriors["index"] == action_index]
+                posteriors_i = posteriors_i.loc[hypo_intent, opponents].dropna().astype(float)
             if "player_credit" in [size, color, annot]:
                 player_credits_i = self.player_credits[self.player_credits["index"] == action_index]
                 player_credits_i = player_credits_i.set_index("option").loc[hypo_intent, opponents].astype(float)
@@ -380,8 +375,8 @@ class DEFCON:
         # snapshot_args = {"traces": frame_data}
         for k, col_name in {"player_sizes": size, "player_colors": color, "player_annots": annot}.items():
             if col_name is not None:
-                if col_name == "intercept":
-                    snapshot_args[k] = intercept_probs_i
+                if col_name == "posterior":
+                    snapshot_args[k] = posteriors_i
                 elif col_name == "player_credit":
                     snapshot_args[k] = player_credits_i
                 else:
@@ -408,17 +403,14 @@ class DEFCON:
                 [500, 20500, -0.01, 0.01],
                 [500, 20500, -0.005, 0.005],
             ],
-            index=["pass_intent", "oppo_agn_intent", "pass_success", "intercept", "team_credit", "player_credit"],
+            index=["pass_intent", "oppo_agn_intent", "pass_success", "posterior", "team_credit", "player_credit"],
             columns=["min_size", "max_size", "min_color", "max_color"],
         )
-
-        # min_sizes = {"pass_intent": 400, "oppo_agn_intent": 500, "pass_success": 0, "intercept": 0}
-        # max_sizes = {"pass_intent": 2000, "oppo_agn_intent": 2000, "pass_success": 1600, "intercept": 0.5}
         min_sizes = defaultdict(lambda: 500, style_args["min_size"].to_dict())
         max_sizes = defaultdict(lambda: 20500, style_args["max_size"].to_dict())
 
-        min_colors = {"pass_intent": 0, "oppo_agn_intent": 0, "pass_success": 0.3, "intercept": 0}
-        max_colors = {"pass_intent": 0.5, "oppo_agn_intent": 0.5, "pass_success": 1, "intercept": 0.5}
+        min_colors = {"pass_intent": 0, "oppo_agn_intent": 0, "pass_success": 0.3, "posterior": 0}
+        max_colors = {"pass_intent": 0.5, "oppo_agn_intent": 0.5, "pass_success": 1, "posterior": 0.5}
         min_colors = defaultdict(lambda: 0.01, style_args["min_color"].to_dict())
         max_colors = defaultdict(lambda: 0.05, style_args["max_color"].to_dict())
 
@@ -428,7 +420,6 @@ class DEFCON:
             cmin=min_colors[color],
             cmax=max_colors[color],
             annot_type=annot,
-            focus_xy=(60, 45),
         )
 
         return values.round(4)

@@ -116,10 +116,10 @@ class TraceSnapshot:
                 scale_units="xy",
                 scale=1,
                 color=colors,
-                width=0.01,
-                headwidth=5,
-                # width=0.003,
+                # width=0.01,
                 # headwidth=5,
+                width=0.003,
+                headwidth=5,
             )
 
         for i, p in enumerate(players):
@@ -156,10 +156,10 @@ class TraceSnapshot:
         annot_type=None,
     ):
         if focus_xy is None:
-            figsize = (7.8, 5.4)
+            figsize = (10.4, 7.2)
             # figsize = (15.6, 10.8) if half is None else (10.4, 14.4)  # (10.4, 12)
         else:
-            figsize = (3.5, 3.39)  # (8, 8)
+            figsize = (3.5, 3.5)  # (3.5, 3.39)
 
         if self.colors is not None:
             figsize = (figsize[0] * 1.2, figsize[1])
@@ -222,7 +222,7 @@ class TraceSnapshot:
 
                 text_xy = traces[[f"{p}_x", f"{p}_y"]].values[-1]
                 if not p.endswith("_goal"):
-                    text_xy[1] += 3
+                    text_xy[1] -= 3
                 elif p == "home_goal":
                     text_xy[0] += 3
                 elif p == "away_goal":
@@ -251,7 +251,6 @@ class TraceSnapshot:
             sm.set_array([])
 
             cbar = fig.colorbar(sm, ax=ax)
-            # cbar.set_label("Goal probability if receiving a pass", fontsize=20)
             cbar.ax.tick_params(labelsize=20)
 
         if self.edges is not None:

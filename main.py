@@ -15,11 +15,11 @@ from datatools.defcon import DEFCON
 from datatools.feature import FeatureEngineer
 from datatools.xg_model import XGModel
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--result_path", type=str, required=False, default="data/ajax/player_scores.parquet")
-args, _ = parser.parse_known_args()
-
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--result_path", type=str, required=False, default="data/ajax/player_scores.parquet")
+    args, _ = parser.parse_known_args()
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     event_files = np.sort(os.listdir("data/ajax/event_synced"))
@@ -61,7 +61,7 @@ if __name__ == "__main__":
             pass_success_model_id="intent_success/30",
             pass_scoring_model_id="intent_scoring/32",
             shot_blocking_model_id="shot_blocking/30",
-            intercept_model_id="failure_receiver/30",
+            posterior_model_id="failure_receiver/30",
             likelihood_model_id="oppo_agn_intent/02",
             device=device,
         )

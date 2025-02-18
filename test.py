@@ -12,12 +12,11 @@ from dataset import ActionDataset
 from models import utils
 from models.utils import get_losses_str, run_epoch
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--model_id", type=str, required=True, help="target/trial, e.g., intent/01")
-args, _ = parser.parse_known_args()
-
-
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model_id", type=str, required=True, help="target/trial, e.g., intent/01")
+    args, _ = parser.parse_known_args()
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = utils.load_model(args.model_id, device)
     model_args = argparse.Namespace(**model.args)

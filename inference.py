@@ -166,12 +166,12 @@ def inference_success(eng: FeatureEngineer, model: GAT, device="cuda") -> pd.Dat
     return pd.DataFrame(success_probs).set_index("index")[home_players + away_players]
 
 
-def inference_intercept(eng: FeatureEngineer, model: GAT = None, device="cuda") -> pd.DataFrame:
+def inference_posterior(eng: FeatureEngineer, model: GAT = None, device="cuda") -> pd.DataFrame:
     graphs, labels = filter_features_and_labels(eng.features, eng.labels, model.args)
     include_goals = (graphs[0].x[:, 2] == 1).any().item()
-    intercept_probs = []
+    posteriors = []
 
-    for data_index in tqdm(range(len(graphs)), desc="intercept"):
+    for data_index in tqdm(range(len(graphs)), desc="posterior"):
         graph_i = graphs[data_index].to(device)
 
         action_index = int(labels[data_index, 0].item())
@@ -193,16 +193,14 @@ def inference_intercept(eng: FeatureEngineer, model: GAT = None, device="cuda") 
         receive_logits = logits[:-n_teammates].reshape(n_teammates, -1)  # [12, 22]
         ballout_logits = logits[-n_teammates:].unsqueeze(1)  # [12, 1]
         logits = torch.cat([receive_logits, ballout_logits], 1)  # [12, 23]
-        intercept_probs_i = nn.Softmax(dim=1)(logits[:, n_teammates:]).cpu().detach().numpy()  # [12, 12]
+        posteriors_i = nn.Softmax(dim=1)(logits[:, n_teammates:]).cpu().detach().numpy()  # [12, 12]
 
-        intercept_probs_i = pd.DataFrame(
-            intercept_probs_i, index=active_players[0], columns=active_players[1] + ["out"]
-        )
-        intercept_probs_i["index"] = action_index
-        intercept_probs_i.index.name = "option"
-        intercept_probs.append(intercept_probs_i)
+        posteriors_i = pd.DataFrame(posteriors_i, index=active_players[0], columns=active_players[1] + ["out"])
+        posteriors_i["index"] = action_index
+        posteriors_i.index.name = "option"
+        posteriors.append(posteriors_i)
 
     valid_traces = eng.traces.dropna(axis=1, how="all")
     home_players = [c[:-2] for c in valid_traces.columns if re.match(r"home_\d+_x", c)]
     away_players = [c[:-2] for c in valid_traces.columns if re.match(r"away_\d+_x", c)]
-    return pd.concat(intercept_probs)[["index"] + home_players + away_players + ["out"]]
+    return pd.concat(posteriors)[["index"] + home_players + away_players + ["out"]]

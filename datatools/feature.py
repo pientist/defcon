@@ -712,12 +712,11 @@ class FeatureEngineer:
             torch.save(self.augmented_labels, f"{label_dir}/{game_id}.pt")
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--action_type", type=str, required=True, choices=["all", "pass", "shot", "failure"])
-args, _ = parser.parse_known_args()
-
-
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--action_type", type=str, required=True, choices=["all", "pass", "shot", "failure"])
+    args, _ = parser.parse_known_args()
+
     include_goals = args.action_type in ["all", "failure"]
     augment = args.action_type == "failure"
 
