@@ -1,5 +1,5 @@
 {
-    "editor.fontSize": 15,
+    "editor.fontSize": 14,
     "editor.fontFamily": "Menlo, Monaco, Monospace",
     "terminal.integrated.fontSize": 15,
     "jupyter.notebookFileRoot": "${workspaceFolder}",
