@@ -25,18 +25,18 @@ You can get a better understanding of the data usage by referring to the executi
 ## Detailed Instructions
 The framework requires the estimation of six key components for a given moment of action as follows:
 - [Section 3.2] **Expected return** indicating the difference between the goal-scoring and goal-conceding probabilities of the attacking team within the next 10 events.
-- [Section 3.3.1] **Pass success probability** that the pass is successfully sent to such intended receiver.
-- [Section 3.3.1] **Receiver selection probability** that each teammate of the passer becomes the target (i.e., the "intended" receiver) of a pass. This probability is not a main component of the defensive credit, but used in oversampling less-likely instances when training the above pass success prediction model.
+- [Section 3.3.1] **Receiver selection probability** that each teammate of the passer becomes the target (i.e., the "intended" receiver) of a pass. This probability is not a main component of the defensive credit, but used in oversampling less-likely instances when training the following *pass success model*.
+- [Section 3.3.1] **Pass success probability** that the pass to each teammate is successful.
 - [Section 3.3.2] **Shot-blocking probability** that the shot made in the given situation would be blocked by a defender.
-- [Section 3.4] **Success-conditioned expected return** indicating the expected return of the attacking team under the condition that the pass to each teammate of the ball carrier were successful.
+- [Section 3.4] **Success-conditioned expected return** indicating the expected return of the attacking team under the condition that the pass to each teammate was successful.
 - [Section 3.5] **Failure-conditioned posterior probability** that each of the opposing defenders would have caused the failure if a pass or a shot failed.
 
 ### 1. Generating Features and Labels
-If you have formatted data and installed the packages listed in `requirements.txt`, you can generate features and labels for training and testing the component models by executing `datatools/feature.py` with `action_type` as an argument:
+Once you have formatted data and installed the packages listed in `requirements.txt`, you can generate features and labels for training and testing the component models by executing `datatools/feature.py` with `action_type` as an argument:
 ```
 python datatools/feature.py --action_type {placeholder}
 ```
-`action_type` should be either `all`, `pass`, `shot`, or `failure`, and varies according to the component model. The corresponding `action_type` for each component is listed in Table 1 of the paper. Namely, the specific comments for generating features and labels for each component are as follows:
+The placeholder should be either `all`, `pass`, `shot`, or `failure`, and varies according to the type of component. The corresponding `action_type` for each component is listed in Table 1 of the paper. Namely, the specific comments for generating features and labels for each component are as follows:
 - [Section 3.2] Expected return: `python datatools/feature.py --action_type all`
 - [Sections 3.3.1 and 3.4] Pass success probability, receiver selection probability, and success-conditioned expected return: `python datatools/feature.py --action_type pass`
 - [Section 3.3.2] Shot-blocking probability: `python datatools/feature.py --action_type shot`
